@@ -1,0 +1,67 @@
+<html>
+<head>
+<title>Chromodoro Options</title>
+<style>
+body {
+  background: #eee;
+  font-family: verdana, arial, sans-serif;
+  font-size: 10px;
+}
+
+h1 {
+  font-size: 12px;
+  text-align: center;
+}
+
+table {
+  font-size: 10px;
+  margin-left: auto;
+  margin-right: auto;
+  white-space: nowrap;
+}
+
+th {
+  font-weight: bold;
+  text-align: right;
+}
+
+#buttons {
+  text-align: right;
+}
+</style>
+<script>
+function option(name) {
+  return document.getElementById(name);
+}
+
+function load() {
+  option("work_duration_mins").value = localStorage["work_duration_mins"];
+  option("rest_duration_mins").value = localStorage["rest_duration_mins"];
+}
+
+function save() {
+  localStorage["work_duration_mins"] = option("work_duration_mins").value;
+  localStorage["rest_duration_mins"] = option("rest_duration_mins").value;
+}
+</script>
+</head>
+<body onload="load()">
+
+<h1>Chromodoro Options</h1>
+
+<table>
+<tr>
+<th>Work duration:</th>
+<td><input id="work_duration_mins" type="number" size="2"> minutes</td>
+</tr>
+<tr>
+<th>Rest duration:</th>
+<td><input id="rest_duration_mins" type="number" size="2"> minutes</td>
+</tr>
+<tr>
+<td id="buttons" colspan="2"><button onclick="save()">Save</button></td>
+</tr>
+</table>
+
+</body>
+</html>

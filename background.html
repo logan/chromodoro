@@ -1,0 +1,312 @@
+<audio id="tick" autobuffer="autobuffer">
+  <source src="tick.ogg" type="audio/ogg; codecs=vorbis">
+</audio>
+<canvas id="icon" width="19" height="19"></canvas>
+<script>
+// Here is our state model:
+//
+// IDLING <-----> WORKING
+//    ^             /
+//     \           /
+//      \         /
+//       \       V
+//        RESTING
+//
+// During the IDLING state, our timer is set to the work duration and is
+// paused.
+//
+// During the WORKING state, our timer ticks down from the work duration. Once
+// the timer expires, we transition automatically to the RESTING state.
+//
+// During the RESTING state, our timer ticks down from the rest duration. Once
+// the timer expires, we transition automatically to the IDLING state.
+var IDLING = 0;
+var WORKING = 1;
+var RESTING = 2;
+
+// Our initial state is IDLING.
+var state = IDLING;
+
+// Evil global variables.
+
+// setTimeout handle used by the timer.
+var timeout;
+
+// The callback to invoke when the timer expires. Should be one of startResting
+// or startIdling.
+var timeout_callback;
+
+// The timestamp (ms) when the timer started.
+var start_time;
+
+// The future timestamp (ms) when the timer expires.
+var end_time;
+
+// Amount of milliseconds remaining until the timer expires.
+var remainder_ms;
+
+// Timer progress as a percentage (0 <= progress <= 1).
+var progress;
+
+// Callback from popup.html to invoke each timer tick or state change.
+var observer;
+
+// Reference to the tick audio element.
+var tick = document.getElementById("tick");
+
+// Reference to our canvas for drawing the browser action icon.
+var icon = document.getElementById("icon");
+
+
+// A dual-purpose progress bar renderer. Takes a canvas and periodically
+// redraws a progress bar in it.
+//
+// Works in two modes: icon and popup. Icon mode is for a tiny, non-interactive
+// version. Popup mode features an emulated "stop" button for interrupting the
+// timer and returning to the IDLING state.
+function ProgressBar(canvas, icon_mode) {
+  this.canvas = canvas;
+  this.icon_mode = icon_mode;
+  this.ctx = this.canvas.getContext("2d");
+  this.stop_button_offset = this.icon_mode ? 0 : this.canvas.height / 5;
+  this.stop_button_size = this.icon_mode ? 0 : this.canvas.height - 2 * this.stop_button_offset;
+  this.bgcolor = "white";
+  var self = this;
+  if (!icon_mode) {
+    this.canvas.onclick = function(e) { self.onClick(e); };
+  }
+}
+
+ProgressBar.prototype.onClick = function(e) {
+  if (state == IDLING) {
+    return;
+  }
+  var third = this.canvas.height / 3;
+  var low = this.stop_button_offset;
+  var high = low + this.stop_button_size;
+  if (e.offsetX >= low && e.offsetY >= low
+      && e.offsetX <= high && e.offsetY <= high) {
+    startIdling();
+  }
+};
+
+ProgressBar.prototype.update = function(percentage, color, label) {
+  this.Clear();
+  var height = this.icon_mode ? 8 : this.canvas.height;
+  var width = percentage * this.canvas.width;
+  if (width < 2 * this.stop_button_offset + this.stop_button_size) {
+    width = 2 * this.stop_button_offset + this.stop_button_size;
+  }
+  this.DrawRectangle(color, 0, 0, width, height);
+  if (this.icon_mode) {
+    this.DrawIcon();
+  } else {
+    var third = this.canvas.height / 3;
+    this.DrawRectangle(color,
+                       this.stop_button_offset, this.stop_button_offset,
+                       this.stop_button_size, this.stop_button_size);
+    this.ctx.globalCompositeOperation = "lighter";
+    this.DrawRectangle([64, 64, 64, 255],
+                       this.stop_button_offset, this.stop_button_offset,
+                       this.stop_button_size, this.stop_button_size);
+    this.ctx.globalCompositeOperation = "source-over";
+  }
+};
+
+ProgressBar.prototype.Clear = function() {
+  this.ctx.fillStyle = this.bgcolor;
+  this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+  if (this.icon_mode) {
+    this.ctx.strokeStyle = "black";
+    this.ctx.strokeRect(0, 0, this.canvas.width, 8);
+  }
+};
+
+ProgressBar.prototype.DrawRectangle = function(color, x, y, w, h) {
+  this.ctx.fillStyle = "rgba(" + color[0] + ", " + color[1] + ", " + color[2] + ", " + color[3] + ")";
+  this.ctx.fillRect(x, y, w, h);
+};
+
+ProgressBar.prototype.DrawIcon = function() {
+  this.ctx.beginPath();
+  this.ctx.moveTo(6, 2);
+  this.ctx.lineTo(14, 2);
+  this.ctx.lineTo(10, 6);
+  this.ctx.closePath();
+  this.ctx.fillStyle = "black";
+  this.ctx.fill();
+}
+
+// Returns remainder_ms formatted as [m]m:ss.
+function formatTimeRemaining() {
+  var s = Math.floor(remainder_ms / 1000);
+  var h = Math.floor(s / 60);
+  var m = s % 60;
+  if (m < 10) {
+    m = "0" + m;
+  }
+  return h + ":" + m;
+}
+
+// Determines the "mood" of the progress bar according to the state and how
+// much time is left.
+function getProgressBackgroundColor() {
+  var left, right;
+  switch (state) {
+    case IDLING:
+      // White.
+      return [0, 0, 0, 255];
+    case WORKING:
+      // Transition from green to red.
+      left = 0x00ff00;
+      right = 0xff0000;
+      break;
+    case RESTING:
+      // Transition from light to dark blue.
+      left = 0xaaaaff;
+      right = 0x3333ff;
+      break;
+  }
+  // Interpolate.
+  var r1 = (left >> 16) & 0xff;
+  var g1 = (left >> 8) & 0xff;
+  var b1 = left & 0xff;
+  var r2 = (right >> 16) & 0xff;
+  var g2 = (right >> 8) & 0xff;
+  var b2 = right & 0xff;
+  var r = Math.floor((r2 - r1) * progress + r1);
+  var g = Math.floor((g2 - g1) * progress + g1);
+  var b = Math.floor((b2 - b1) * progress + b1);
+  return [r, g, b, 255];
+}
+
+// Retrieves the title of the last task that was started.
+function getLastTaskTitle() {
+  return localStorage["last_task_title"];
+}
+
+// Transitions to the WORKING state and records the task title.
+function startWorking(task_title) {
+  if (state != this.IDLING) {
+    // TODO(logan): Figure out error handling.
+    return;
+  }
+  localStorage["last_task_title"] = task_title;
+  startTimer(localStorage["work_duration_mins"] * 60 * 1000, startResting);
+  state = WORKING;
+};
+
+// Transitions to the RESTING state.
+function startResting() {
+  if (state != WORKING) {
+    // TODO(logan): Figure out error handling.
+    return;
+  }
+  startTimer(localStorage["rest_duration_mins"] * 60 * 1000, startIdling);
+  state = RESTING;
+};
+
+// Transitions to the IDLING state.
+function startIdling() {
+  if (timeout != null) {
+    clearTimeout(timeout);
+    timeout = null;
+  }
+  remainder_ms = localStorage["work_duration_mins"] * 60 * 1000;
+  progress = 0;
+  state = IDLING;
+  updateProgress();
+}
+
+// Determines what delay we should pass to setTimeout. We want our callback to
+// be invoked as soon after the timer tick as possible.
+function predictNextTick(now) {
+  return 1000 - (now - start_time) % 1000;
+}
+
+// Initializes the timer and starts it running using a setTimeout loop.
+function startTimer(duration_ms, callback) {
+  timeout_callback = callback;
+  start_time = (new Date()).getTime();
+  end_time = start_time + duration_ms;
+  progress = 0;
+  if (tick.readyState == tick.HAVE_ENOUGH_DATA && !tick.seeking) {
+    // TODO(logan): Enable when playback in extensions works.
+    //tick.play();
+  }
+  timeout = setTimeout(updateTimer, predictNextTick(start_time));
+};
+
+// Callback for timer ticks.
+function updateTimer() {
+  // Notify observers, update the UI, and get the current time.
+  var now = updateProgress();
+  // Determine if the timer has expired.
+  if (now >= end_time) {
+    // Make sure the tick audio is paused and rewound as the timer expires.
+    if (!tick.paused) {
+      tick.pause();
+    }
+    if (tick.readyState != tick.HAVE_NOTHING) {
+      tick.currentTime = 0;
+    }
+    timeout_callback();
+  } else {
+    // Schedule the next tick.
+    timeout = setTimeout(updateTimer, predictNextTick(now));
+  }
+};
+
+// Notifies all observers of the current timer status and updates the UI.
+// This is called after every timer tick, as well as on every state change.
+// Returns the current timestamp in ms.
+function updateProgress() {
+  var now = (new Date()).getTime();
+  if (now >= end_time) {
+    now = end_time;
+  }
+  if (state != IDLING) {
+    // Update progress and remaining time according to timer.
+    progress = (now - start_time) / (end_time - start_time);
+    remainder_ms = end_time - now;
+  }
+
+  var remainder_msg = formatTimeRemaining();
+  var bgcolor = getProgressBackgroundColor();
+
+  // Update the icon and its badge.
+  updateIcon(progress, bgcolor, remainder_msg);
+  chrome.browserAction.setBadgeBackgroundColor({"color": bgcolor});
+  chrome.browserAction.setBadgeText({"text": remainder_msg});
+
+  // Update popup.html if it's loaded.
+  if (observer != null) {
+    observer(progress, bgcolor, remainder_msg);
+  }
+  return now;
+}
+
+// Updates the browser action icon's progress bar.
+function updateIcon(progress, bgcolor, remainder_msg) {
+  icon_progress_bar.update(progress, bgcolor, remainder_msg);
+  var ctx = icon.getContext("2d");
+  chrome.browserAction.setIcon({"imageData": ctx.getImageData(0, 0, this.icon.width, this.icon.height)});
+}
+
+// Stores a default value for an option in localStorage if it hasn't been set
+// there already.
+function setDefault(name, value) {
+  if (localStorage[name] == null) {
+    localStorage[name] = value;
+  }
+}
+
+// Options and their default values:
+setDefault("work_duration_mins", 25);
+setDefault("rest_duration_mins", 5);
+
+// Instantiate the browser action icon progress bar and transition into our
+// initial IDLING state.
+var icon_progress_bar = new ProgressBar(icon, true);
+startIdling();
+</script>
