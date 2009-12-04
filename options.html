@@ -42,6 +42,12 @@ function load() {
 function save() {
   localStorage["work_duration_mins"] = option("work_duration_mins").value;
   localStorage["rest_duration_mins"] = option("rest_duration_mins").value;
+  // When we're in the IDLING state, we want the displayed countdown start to
+  // update.
+  var chromodoro = chrome.extension.getBackgroundPage();
+  if (chromodoro.state == chromodoro.IDLING) {
+    chromodoro.startIdling();
+  }
 }
 </script>
 </head>
