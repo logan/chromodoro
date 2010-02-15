@@ -48,6 +48,11 @@ function save() {
   if (chromodoro.state == chromodoro.IDLING) {
     chromodoro.startIdling();
   }
+  /* Disabled for now; the popup can't shrink so it just looks bad.
+  if (window.parent.closeOptions) {
+    window.parent.closeOptions();
+  }
+  */
 }
 </script>
 </head>

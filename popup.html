@@ -60,9 +60,15 @@ iframe {
   width: 100%;
 }
 
-#options {
+#options_link {
   font-size: small;
   text-align: right;
+}
+
+#options_iframe {
+  height: 200px;
+  width: 320px;
+  display: none;
 }
 </style>
 <script>
@@ -70,13 +76,18 @@ var chromodoro = chrome.extension.getBackgroundPage();
 
 // Embeds an iframe containing options.html in the popup.
 function openOptions() {
-  var a = document.getElementById("options");
-  var iframe = document.createElement("iframe");
-  iframe.setAttribute("height", "200px");
-  iframe.setAttribute("width", "320px");
+  var a = document.getElementById("options_link");
+  var iframe = document.getElementById("options_iframe");
+  a.style.display = "none";
   iframe.setAttribute("src", chrome.extension.getURL("options.html"));
-  a.parentElement.appendChild(iframe);
-  a.parentElement.removeChild(a);
+  iframe.style.display = "block";
+}
+
+function closeOptions() {
+  var a = document.getElementById("options_link");
+  var iframe = document.getElementById("options_iframe");
+  a.style.display = "block";
+  iframe.style.display = "none";
 }
 
 // Widget for the user to enter task titles. Also updates the status message
@@ -138,7 +149,8 @@ TaskInput.prototype.restore = function() {
 </tr></table>
 </form>
 <div id="status">What do you want to work on now?</div>
-<div id="options"><a href="javascript://" onclick="openOptions()">Options</a></div>
+<div id="options_link"><a href="javascript://" onclick="openOptions()">Options</a></div>
+<iframe id="options_iframe"></iframe>
 </body>
 <script>
 var countdown = document.getElementById("countdown");
