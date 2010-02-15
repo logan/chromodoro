@@ -272,11 +272,10 @@ function updateTimer() {
     // Play the ring sound to notify the user that time is up.
     if (ring.readyState >= ring.HAVE_CURRENT_DATA && !ring.seeking) {
       if (localStorage["enable_audio"] != "disabled") {
-        ring.currentTime = 0;
         ring.play();
         // Make sure ring audio will be ready for when the timer expires.
         // Until we use a local resource, we must use load to "rewind."
-        setTimeout(3000, function() { ring.load(); });
+        setTimeout(function() { ring.load(); }, 3000);
       }
     }
     timeout_callback();
