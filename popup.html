@@ -109,18 +109,23 @@ function TaskInput(container, input, canvas, status_msg) {
 TaskInput.prototype.onSubmit = function() {
   var value = this.input.value;
   this.previous_value = value;
+  this.updateWorkingStatus();
+  chromodoro.startWorking(value);
+}
+
+// Set the status when work enters progress.
+TaskInput.prototype.updateWorkingStatus = function() {
   this.container.style["display"] = "none";
   this.canvas.style["display"] = "block";
-  if (value && value.length > 0) {
+  if (this.previous_value && this.previous_value.length > 0) {
     this.status_msg.innerHTML = "Working on ";
     var b = document.createElement("b");
-    b.appendChild(document.createTextNode(value));
+    b.appendChild(document.createTextNode(this.previous_value));
     this.status_msg.appendChild(b);
     this.status_msg.appendChild(document.createTextNode("."));
   } else {
     this.status_msg.innerHTML = "Working.";
   }
-  chromodoro.startWorking(value);
 }
 
 // Restores the task form in place of the progress bar when we enter the IDLING
@@ -167,10 +172,14 @@ chromodoro.observer = function(percentage, color, label) {
   countdown.innerHTML = chromodoro.formatTimeRemaining();
   if (chromodoro.state == chromodoro.IDLING) {
     task_input.restore();
-    if (prev_state != chromodoro.RESTING) {
+    if (prev_state == chromodoro.WORKING) {
       status_msg.innerHTML = "Interrupted! What now?";
     }
   } else {
+    if (chromodoro.state == chromodoro.WORKING
+        && prev_state != chromodoro.WORKING) {
+      task_input.updateWorkingStatus();
+    }
     if (chromodoro.state == chromodoro.RESTING) {
       status_msg.innerHTML = "Time for a break!";
     }
