@@ -81,11 +81,11 @@ function openOptions() {
 
 // Widget for the user to enter task titles. Also updates the status message
 // on state changes.
-function TaskInput(container, input, canvas, status) {
+function TaskInput(container, input, canvas, status_msg) {
   this.container = container;
   this.input = input;
   this.canvas = canvas;
-  this.status = status;
+  this.status_msg = status_msg;
   this.previous_value = chromodoro.getLastTaskTitle();
   this.changed = false;
 
@@ -101,12 +101,13 @@ TaskInput.prototype.onSubmit = function() {
   this.container.style["display"] = "none";
   this.canvas.style["display"] = "block";
   if (value && value.length > 0) {
-    this.status.innerText = "Working on ";
+    this.status_msg.innerHTML = "Working on ";
     var b = document.createElement("b");
-    b.innerText = value;
-    this.status.appendChild(b);
+    b.appendChild(document.createTextNode(value));
+    this.status_msg.appendChild(b);
+    this.status_msg.appendChild(document.createTextNode("."));
   } else {
-    this.status.innerText = "Working.";
+    this.status_msg.innerHTML = "Working.";
   }
   chromodoro.startWorking(value);
 }
@@ -114,7 +115,7 @@ TaskInput.prototype.onSubmit = function() {
 // Restores the task form in place of the progress bar when we enter the IDLING
 // state.
 TaskInput.prototype.restore = function() {
-  this.status.innerText = "What do you want to work on now?";
+  this.status_msg.innerHTML = "What do you want to work on now?";
   this.canvas.style["display"] = "none";
   this.container.style["display"] = "block";
   if (this.previous_value == null) {
@@ -130,7 +131,7 @@ TaskInput.prototype.restore = function() {
 <body>
 <div id="countdown"></div>
 <canvas id="canvas" width="240" height="24"></canvas>
-<form id="task_container" action="javasript://">
+<form id="task_container" action="javascript://">
 <table><tr>
 <td id="task_input_cell"><input id="task"></td>
 <td id="task_button_cell"><input type="submit" value="Start"></td>
@@ -143,23 +144,23 @@ TaskInput.prototype.restore = function() {
 var countdown = document.getElementById("countdown");
 var canvas = document.getElementById("canvas");
 var progress_bar = new chromodoro.ProgressBar(canvas);
-var status = document.getElementById("status");
+var status_msg = document.getElementById("status");
 var task_input = new TaskInput(document.getElementById("task_container"),
                                document.getElementById("task"),
-                               canvas, status);
+                               canvas, status_msg);
 var prev_state = chromodoro.IDLING;
 
 // Callback for background.html to invoke on each timer tick or state change.
 chromodoro.observer = function(percentage, color, label) {
-  countdown.innerText = chromodoro.formatTimeRemaining();
+  countdown.innerHTML = chromodoro.formatTimeRemaining();
   if (chromodoro.state == chromodoro.IDLING) {
     task_input.restore();
     if (prev_state != chromodoro.IDLING) {
-      status.innerText = "Interrupted! What now?";
+      status_msg.innerHTML = "Interrupted! What now?";
     }
   } else {
     if (chromodoro.state == chromodoro.RESTING) {
-      status.innerText = "Time for a break!";
+      status_msg.innerHTML = "Time for a break!";
     }
     progress_bar.update(percentage, color, label);
   }
