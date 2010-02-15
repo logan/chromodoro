@@ -1,12 +1,17 @@
 {
   "name": "Chromodoro",
-  "version": "0.0",
+  "version": "1.0",
   "description": "Pomodoro timer for Chrome!",
   "background_page": "background.html",
   "browser_action": {
     "popup": "popup.html"
   },
   "options_page": "options.html",
+  "icons": {
+    "32": "icon32.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  },
   "permissions": [
   ]
 }
