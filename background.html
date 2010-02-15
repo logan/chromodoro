@@ -231,8 +231,7 @@ function startTimer(duration_ms, callback) {
   end_time = start_time + duration_ms;
   progress = 0;
   if (tick.readyState == tick.HAVE_ENOUGH_DATA && !tick.seeking) {
-    // TODO(logan): Enable when playback in extensions works.
-    //tick.play();
+    tick.play();
   }
   timeout = setTimeout(updateTimer, 0);
 };
