@@ -37,22 +37,31 @@ function option(name) {
 function load() {
   option("work_duration_mins").value = localStorage["work_duration_mins"];
   option("rest_duration_mins").value = localStorage["rest_duration_mins"];
+  option("enable_audio").checked = localStorage["enable_audio"] != "disabled";
 }
 
 function save() {
   localStorage["work_duration_mins"] = option("work_duration_mins").value;
   localStorage["rest_duration_mins"] = option("rest_duration_mins").value;
+  localStorage["enable_audio"] = option("enable_audio").checked ? "enabled" : "disabled";
+
   // When we're in the IDLING state, we want the displayed countdown start to
   // update.
   var chromodoro = chrome.extension.getBackgroundPage();
   if (chromodoro.state == chromodoro.IDLING) {
     chromodoro.startIdling();
   }
+  document.getElementById("save").disabled = true;
+
   /* Disabled for now; the popup can't shrink so it just looks bad.
   if (window.parent.closeOptions) {
     window.parent.closeOptions();
   }
   */
+}
+
+function invalidate() {
+  document.getElementById("save").disabled = false;
 }
 </script>
 </head>
@@ -61,17 +70,25 @@ function save() {
 <h1>Chromodoro Options</h1>
 
 <table>
-<tr>
-<th>Work duration:</th>
-<td><input id="work_duration_mins" type="number" size="2"> minutes</td>
-</tr>
-<tr>
-<th>Rest duration:</th>
-<td><input id="rest_duration_mins" type="number" size="2"> minutes</td>
-</tr>
-<tr>
-<td id="buttons" colspan="2"><button onclick="save()">Save</button></td>
-</tr>
+  <tr>
+    <th>&nbsp;</th>
+    <td>
+      <input type="checkbox" id="enable_audio" name="enable_audio" onchange="invalidate()">
+      <label for="enable_audio">Enable ticking and alarm sounds</label>
+    </td>
+  <tr>
+    <th>Work duration:</th>
+    <td><input id="work_duration_mins" type="number" size="2" onchange="invalidate()"> minutes</td>
+  </tr>
+  <tr>
+    <th>Rest duration:</th>
+    <td><input id="rest_duration_mins" type="number" size="2" onchange="invalidate()"> minutes</td>
+  </tr>
+  <tr>
+    <td id="buttons" colspan="2">
+      <button id="save" onclick="save()" disabled="disabled">Save</button>
+    </td>
+  </tr>
 </table>
 
 </body>

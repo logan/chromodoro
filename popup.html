@@ -167,7 +167,7 @@ chromodoro.observer = function(percentage, color, label) {
   countdown.innerHTML = chromodoro.formatTimeRemaining();
   if (chromodoro.state == chromodoro.IDLING) {
     task_input.restore();
-    if (prev_state != chromodoro.IDLING) {
+    if (prev_state != chromodoro.RESTING) {
       status_msg.innerHTML = "Interrupted! What now?";
     }
   } else {

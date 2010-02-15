@@ -6,6 +6,14 @@
   <source src="http://chromodoro.googlecode.com/hg/tick.ogg"
           type="audio/ogg; codecs=vorbis">
 </audio>
+<audio id="ring" autobuffer="autobuffer">
+  <!-- Reenable when this Chromium bug is fixed:
+    http://code.google.com/p/chromium/issues/detail?id=31024
+  <source src="ring.ogg" type="audio/ogg; codecs=vorbis">
+  -->
+  <source src="http://chromodoro.googlecode.com/hg/ring.ogg"
+          type="audio/ogg; codecs=vorbis">
+</audio>
 <canvas id="icon" width="19" height="19"></canvas>
 <script>
 // Here is our state model:
@@ -58,6 +66,9 @@ var observer;
 
 // Reference to the tick audio element.
 var tick = document.getElementById("tick");
+
+// Reference to the ring audio element.
+var ring = document.getElementById("ring");
 
 // Reference to our canvas for drawing the browser action icon.
 var icon = document.getElementById("icon");
@@ -197,8 +208,8 @@ function startWorking(task_title) {
     return;
   }
   localStorage["last_task_title"] = task_title;
-  startTimer(localStorage["work_duration_mins"] * 60 * 1000, startResting);
   state = WORKING;
+  startTimer(localStorage["work_duration_mins"] * 60 * 1000, startResting);
 };
 
 // Transitions to the RESTING state.
@@ -207,8 +218,8 @@ function startResting() {
     // TODO(logan): Figure out error handling.
     return;
   }
-  startTimer(localStorage["rest_duration_mins"] * 60 * 1000, startIdling);
   state = RESTING;
+  startTimer(localStorage["rest_duration_mins"] * 60 * 1000, startIdling);
 };
 
 // Transitions to the IDLING state.
@@ -220,6 +231,11 @@ function startIdling() {
   remainder_ms = localStorage["work_duration_mins"] * 60 * 1000;
   progress = 0;
   state = IDLING;
+
+  // Make sure tick audio will be ready for when the user starts a new task.
+  // Until we use a local resource, we must use load to "rewind."
+  tick.load();
+
   updateProgress();
 }
 
@@ -235,9 +251,15 @@ function startTimer(duration_ms, callback) {
   start_time = (new Date()).getTime();
   end_time = start_time + duration_ms;
   progress = 0;
-  if (tick.readyState == tick.HAVE_ENOUGH_DATA && !tick.seeking) {
-    tick.play();
+
+  // If starting work, play the tick sound.
+  if (state == WORKING && tick.readyState >= tick.HAVE_CURRENT_DATA
+      && !tick.seeking) {
+    if (localStorage["enable_audio"] != "disabled") {
+      tick.play();
+    }
   }
+
   timeout = setTimeout(updateTimer, 0);
 };
 
@@ -247,12 +269,15 @@ function updateTimer() {
   var now = updateProgress();
   // Determine if the timer has expired.
   if (now >= end_time) {
-    // Make sure the tick audio is paused and rewound as the timer expires.
-    if (!tick.paused) {
-      tick.pause();
-    }
-    if (tick.readyState != tick.HAVE_NOTHING) {
-      tick.currentTime = 0;
+    // Play the ring sound to notify the user that time is up.
+    if (ring.readyState >= ring.HAVE_CURRENT_DATA && !ring.seeking) {
+      if (localStorage["enable_audio"] != "disabled") {
+        ring.currentTime = 0;
+        ring.play();
+        // Make sure ring audio will be ready for when the timer expires.
+        // Until we use a local resource, we must use load to "rewind."
+        setTimeout(3000, function() { ring.load(); });
+      }
     }
     timeout_callback();
   } else {
