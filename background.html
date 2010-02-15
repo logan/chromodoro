@@ -234,7 +234,7 @@ function startTimer(duration_ms, callback) {
     // TODO(logan): Enable when playback in extensions works.
     //tick.play();
   }
-  timeout = setTimeout(updateTimer, predictNextTick(start_time));
+  timeout = setTimeout(updateTimer, 0);
 };
 
 // Callback for timer ticks.
