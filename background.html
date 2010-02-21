@@ -16,6 +16,48 @@
 </audio>
 <canvas id="icon" width="19" height="19"></canvas>
 <script>
+function EventLog(key) {
+  this.key = key;
+}
+
+EventLog.prototype.logEvent = function(event) {
+  event.date = new Date();
+  var count_key = this.key + ":count";
+  var count = localStorage[count_key];
+  if (count == null) {
+    count = 0;
+  } else {
+    count = Number(count);
+  }
+  var item_key = this.key + ":item:" + count;
+  localStorage.setItem(item_key, JSON.stringify(event));
+  this.bucketize(event.date, count);
+  localStorage[count_key] = count + 1;
+};
+
+EventLog.prototype.bucketize = function(date, idx) {
+  var bucket_key = this.key + ":bucket";
+  var components = [date.getFullYear(), date.getMonth(), date.getDate()];
+  for (var i = 0; i < components.length; i++) {
+    bucket_key += ":" + components[i];
+    if (!localStorage[bucket_key]) {
+      localStorage[bucket_key] = idx;
+    }
+  }
+};
+
+
+function ChromodoroEvent(action, task, max_duration) {
+  this.action = action;
+  this.task = task;
+  this.max_duration = max_duration;
+}
+
+
+var event_log = new EventLog("chromodoro");
+event_log.logEvent(new ChromodoroEvent("init", null, null));
+
+
 // Here is our state model:
 //
 // IDLING <-----> WORKING
@@ -196,6 +238,7 @@ ProgressBar.prototype.DrawIcon = function() {
   this.ctx.fill();
 }
 
+
 // Returns remainder_ms formatted as [m]m:ss.
 function formatTimeRemaining() {
   var s = Math.floor(remainder_ms / 1000);
@@ -263,7 +306,9 @@ function startWorking(task_title) {
   }
   localStorage["last_task_title"] = task_title;
   state = WORKING;
-  startTimer(localStorage["work_duration_mins"] * 60 * 1000, startResting);
+  var duration = localStorage["work_duration_mins"] * 60 * 1000;
+  event_log.logEvent(new ChromodoroEvent("work", task_title, duration));
+  startTimer(duration, startResting);
 };
 
 // Transitions to the RESTING state.
@@ -273,7 +318,9 @@ function startResting() {
     return;
   }
   state = RESTING;
-  startTimer(localStorage["rest_duration_mins"] * 60 * 1000, startIdling);
+  var duration = localStorage["rest_duration_mins"] * 60 * 1000;
+  event_log.logEvent(new ChromodoroEvent("rest", localStorage["last_task_title"], duration));
+  startTimer(duration, startIdling);
 };
 
 // Transitions to the IDLING state.
@@ -282,6 +329,7 @@ function startIdling() {
     clearTimeout(timeout);
     timeout = null;
   }
+  event_log.logEvent(new ChromodoroEvent("rest", null, null));
   remainder_ms = localStorage["work_duration_mins"] * 60 * 1000;
   progress = 0;
   state = IDLING;
