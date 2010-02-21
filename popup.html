@@ -112,7 +112,7 @@ TaskInput.prototype.onSubmit = function() {
   this.updateWorkingStatus();
   chromodoro.startWorking(value);
   this.scheduleAutoClose();
-}
+};
 
 // Set the status when work enters progress.
 TaskInput.prototype.updateWorkingStatus = function() {
@@ -127,7 +127,7 @@ TaskInput.prototype.updateWorkingStatus = function() {
   } else {
     this.status_msg.innerHTML = "Working.";
   }
-}
+};
 
 // Restores the task form in place of the progress bar when we enter the IDLING
 // state.
@@ -142,19 +142,19 @@ TaskInput.prototype.restore = function() {
   }
   this.input.focus();
   this.input.select();
-}
+};
 
 TaskInput.prototype.scheduleAutoClose = function() {
   this.cancelAutoClose();
   this.auto_close_timeout = setTimeout(window.close, 1200);
-}
+};
 
 TaskInput.prototype.cancelAutoClose = function() {
   if (this.auto_close_timeout) {
     clearTimeout(this.auto_close_timeout);
     this.auto_close_timeout = null;
   }
-}
+};
 </script>
 </head>
 <body>

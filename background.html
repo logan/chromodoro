@@ -113,33 +113,76 @@ ProgressBar.prototype.update = function(percentage, color, label) {
   if (width < 2 * this.stop_button_offset + this.stop_button_size) {
     width = 2 * this.stop_button_offset + this.stop_button_size;
   }
-  this.DrawRectangle(color, 0, 0, width, height);
+  this.DrawGlossyRectangle(color, 0, 0, width, height);
   if (this.icon_mode) {
     this.DrawIcon();
+    this.ctx.strokeStyle = "black";
+    this.ctx.strokeRect(0, 0, this.canvas.width, 8);
   } else {
     var third = this.canvas.height / 3;
-    this.DrawRectangle(color,
+    this.DrawRectangle(interpolateBetweenColors(color, [0, 0, 0, 0xff], 0.3),
                        this.stop_button_offset, this.stop_button_offset,
                        this.stop_button_size, this.stop_button_size);
-    this.ctx.globalCompositeOperation = "lighter";
-    this.DrawRectangle([64, 64, 64, 255],
-                       this.stop_button_offset, this.stop_button_offset,
-                       this.stop_button_size, this.stop_button_size);
-    this.ctx.globalCompositeOperation = "source-over";
+    // TODO: Make this a pause/play button
+    /*
+    var light_color = interpolateBetweenColors(color, [0xff, 0xff, 0xff, 0xff], 0.2);
+    this.DrawRectangle(light_color,
+                       this.stop_button_offset + this.stop_button_size / 5,
+                       this.stop_button_offset + this.stop_button_size / 5,
+                       this.stop_button_size / 5, 3 * this.stop_button_size / 5);
+    this.DrawRectangle(light_color,
+                       this.stop_button_offset + 3 * this.stop_button_size / 5,
+                       this.stop_button_offset + this.stop_button_size / 5,
+                       this.stop_button_size / 5, 3 * this.stop_button_size / 5);
+    */
   }
+};
+
+ProgressBar.prototype.DrawGlossyRectangle = function(color, x, y, w, h) {
+  var white = [0xff, 0xff, 0xff, 0xff];
+  var black = [0, 0, 0, 0xff];
+  var light_color = interpolateBetweenColors(color, white, 0.3);
+  var dark_color = interpolateBetweenColors(color, black, 0.2);
+
+  // Basic rounded-corner rectangle with gradient.
+  var corner_r = this.icon_mode ? 0 : 4;
+  this.ctx.beginPath();
+  this.ctx.moveTo(x + corner_r, y);
+  this.ctx.arc(x + w - corner_r, y + corner_r, corner_r, 3 * Math.PI / 2, 2 * Math.PI, false);
+  this.ctx.arc(x + w - corner_r, y + h - corner_r, corner_r, 0, Math.PI / 2, false);
+  this.ctx.arc(x + corner_r, y + h - corner_r, corner_r, Math.PI / 2, Math.PI, false);
+  this.ctx.arc(x + corner_r, y + corner_r, corner_r, Math.PI, 3 * Math.PI / 2, false);
+  var gradient = this.ctx.createLinearGradient(x, y, x, y + h);
+  gradient.addColorStop(0, colorTupleToCss(color));
+  gradient.addColorStop(corner_r / h, colorTupleToCss(light_color));
+  gradient.addColorStop(1 - corner_r / h, colorTupleToCss(color));
+  gradient.addColorStop(1, colorTupleToCss(dark_color));
+  this.ctx.fillStyle = gradient;
+  this.ctx.strokeStyle = colorTupleToCss(dark_color);
+  this.ctx.fill();
+
+  // Curvy path to draw gloss
+  var gloss_h = h / 3;
+  corner_r /= 2;
+  this.ctx.globalCompositeOperation = "lighter";
+  this.ctx.fillStyle = colorTupleToCss([64, 64, 64, 255]);
+  this.ctx.beginPath();
+  this.ctx.moveTo(x, y);
+  this.ctx.lineTo(x + w, y);
+  this.ctx.arc(x + w - corner_r, y + gloss_h - corner_r, corner_r, 0, Math.PI / 2, false);
+  this.ctx.arc(x + corner_r, y + gloss_h + corner_r, corner_r, 3 * Math.PI / 2, Math.PI, true);
+  this.ctx.lineTo(x, y);
+  this.ctx.fill();
+  this.ctx.globalCompositeOperation = "source-over";
 };
 
 ProgressBar.prototype.Clear = function() {
   this.ctx.fillStyle = this.bgcolor;
   this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-  if (this.icon_mode) {
-    this.ctx.strokeStyle = "black";
-    this.ctx.strokeRect(0, 0, this.canvas.width, 8);
-  }
 };
 
 ProgressBar.prototype.DrawRectangle = function(color, x, y, w, h) {
-  this.ctx.fillStyle = "rgba(" + color[0] + ", " + color[1] + ", " + color[2] + ", " + color[3] + ")";
+  this.ctx.fillStyle = colorTupleToCss(color);
   this.ctx.fillRect(x, y, w, h);
 };
 
@@ -164,6 +207,27 @@ function formatTimeRemaining() {
   return h + ":" + m;
 }
 
+function interpolateBetweenColors(color1, color2, perc) {
+  // Interpolate.
+  var r1 = color1[0];
+  var g1 = color1[1];
+  var b1 = color1[2];
+  var a1 = color1[3];
+  var r2 = color2[0];
+  var g2 = color2[1];
+  var b2 = color2[2];
+  var a2 = color2[3];
+  var r = Math.floor((r2 - r1) * perc + r1);
+  var g = Math.floor((g2 - g1) * perc + g1);
+  var b = Math.floor((b2 - b1) * perc + b1);
+  var a = Math.floor((a2 - a1) * perc + a1);
+  return [r, g, b, a];
+}
+
+function colorTupleToCss(color) {
+  return "rgba(" + color[0] + ", " + color[1] + ", " + color[2] + ", " + color[3] + ")";
+}
+
 // Determines the "mood" of the progress bar according to the state and how
 // much time is left.
 function getProgressBackgroundColor() {
@@ -174,26 +238,16 @@ function getProgressBackgroundColor() {
       return [0, 0, 0, 255];
     case WORKING:
       // Transition from green to red.
-      left = 0x66ff66;
-      right = 0xff0000;
+      left = [0x66, 0xff, 0x66, 0xff];
+      right = [0xff, 0x00, 0x00, 0xff];
       break;
     case RESTING:
       // Transition from light to dark blue.
-      left = 0xaaaaff;
-      right = 0x3333ff;
+      left = [0xaa, 0xaa, 0xff, 0xff];
+      right = [0x33, 0x33, 0xff, 0xff];
       break;
   }
-  // Interpolate.
-  var r1 = (left >> 16) & 0xff;
-  var g1 = (left >> 8) & 0xff;
-  var b1 = left & 0xff;
-  var r2 = (right >> 16) & 0xff;
-  var g2 = (right >> 8) & 0xff;
-  var b2 = right & 0xff;
-  var r = Math.floor((r2 - r1) * progress + r1);
-  var g = Math.floor((g2 - g1) * progress + g1);
-  var b = Math.floor((b2 - b1) * progress + b1);
-  return [r, g, b, 255];
+  return interpolateBetweenColors(left, right, progress);
 }
 
 // Retrieves the title of the last task that was started.
