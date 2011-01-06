@@ -1,6 +1,6 @@
 {
   "name": "Chromodoro",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Pomodoro timer for Chrome!",
   "background_page": "background.html",
   "browser_action": {
@@ -13,5 +13,6 @@
     "128": "icon128.png"
   },
   "permissions": [
+    "notifications"
   ]
 }

@@ -1,0 +1,19 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/comma-separated-values">
+<meta http-equiv="Content-Dispositoin" content="attachment; filename=eventlog.csv">
+</head>
+<body>
+<script>
+var chromodoro = chrome.extension.getBackgroundPage();
+var iter = chromodoro.event_log.getIterator();
+document.writeln("<pre>");
+while (iter.hasNext()) {
+  var event = iter.next();
+  // TODO: quote the task
+  document.writeln(event.date + "," + event.action + "," + event.task + "," + event.max_duration);
+}
+document.writeln("</pre>");
+</script>
+</body>
+</html>

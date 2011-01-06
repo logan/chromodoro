@@ -22,17 +22,11 @@ function EventLog(key) {
 
 EventLog.prototype.logEvent = function(event) {
   event.date = new Date();
-  var count_key = this.key + ":count";
-  var count = localStorage[count_key];
-  if (count == null) {
-    count = 0;
-  } else {
-    count = Number(count);
-  }
+  var count = this.getCount();
   var item_key = this.key + ":item:" + count;
   localStorage.setItem(item_key, JSON.stringify(event));
   this.bucketize(event.date, count);
-  localStorage[count_key] = count + 1;
+  localStorage[this.key + ":count"] = count + 1;
 };
 
 EventLog.prototype.bucketize = function(date, idx) {
@@ -44,6 +38,40 @@ EventLog.prototype.bucketize = function(date, idx) {
       localStorage[bucket_key] = idx;
     }
   }
+};
+
+EventLog.prototype.getCount = function() {
+  var count = localStorage[this.key + ":count"];
+  if (count == null) {
+    count = 0;
+  } else {
+    count = Number(count);
+  }
+  return count;
+};
+
+EventLog.prototype.getIterator = function() {
+  return new EventLogIterator(this, 0, this.getCount());
+};
+
+EventLog.prototype.getEvent = function(idx) {
+  var item_key = this.key + ":item:" + idx;
+  return JSON.parse(localStorage[item_key]);
+};
+
+
+function EventLogIterator(event_log, start, end) {
+  this.event_log = event_log;
+  this.start = start;
+  this.end = end;
+}
+
+EventLogIterator.prototype.hasNext = function() {
+  return this.start < this.end;
+}
+
+EventLogIterator.prototype.next = function() {
+  return this.event_log.getEvent(this.start++);
 };
 
 
@@ -103,8 +131,13 @@ var remainder_ms;
 // Timer progress as a percentage (0 <= progress <= 1).
 var progress;
 
-// Callback from popup.html to invoke each timer tick or state change.
-var observer;
+// List of registered observer callbacks, to invoke each timer tick or state
+// change.
+var observers = [];
+
+// Boolean that observers can flip on to cause a desktop notification to be
+// displayed after a tick.
+var notificationRequested = false;
 
 // Reference to the tick audio element.
 var tick = document.getElementById("tick");
@@ -307,6 +340,7 @@ function startWorking(task_title) {
   localStorage["last_task_title"] = task_title;
   state = WORKING;
   var duration = localStorage["work_duration_mins"] * 60 * 1000;
+  duration /= 20;  // DONOTSUBMIT
   event_log.logEvent(new ChromodoroEvent("work", task_title, duration));
   startTimer(duration, startResting);
 };
@@ -319,7 +353,9 @@ function startResting() {
   }
   state = RESTING;
   var duration = localStorage["rest_duration_mins"] * 60 * 1000;
+  duration /= 10;  // DONOTSUBMIT
   event_log.logEvent(new ChromodoroEvent("rest", localStorage["last_task_title"], duration));
+  showNotice();
   startTimer(duration, startIdling);
 };
 
@@ -332,6 +368,9 @@ function startIdling() {
   event_log.logEvent(new ChromodoroEvent("rest", null, null));
   remainder_ms = localStorage["work_duration_mins"] * 60 * 1000;
   progress = 0;
+  if (state != IDLING) {
+    showNotice();
+  }
   state = IDLING;
 
   // Make sure tick audio will be ready for when the user starts a new task.
@@ -339,6 +378,11 @@ function startIdling() {
   tick.load();
 
   updateProgress();
+}
+
+function showNotice() {
+  var notice = webkitNotifications.createHTMLNotification("notification.html");
+  notice.show();
 }
 
 // Determines what delay we should pass to setTimeout. We want our callback to
@@ -364,6 +408,11 @@ function startTimer(duration_ms, callback) {
 
   timeout = setTimeout(updateTimer, 0);
 };
+
+// Register callbacks for timer ticks.
+function registerObserver(observer) {
+  observers.push(observer);
+}
 
 // Callback for timer ticks.
 function updateTimer() {
@@ -410,9 +459,18 @@ function updateProgress() {
   chrome.browserAction.setBadgeText({"text": remainder_msg});
 
   // Update popup.html if it's loaded.
-  if (observer != null) {
-    observer(progress, bgcolor, remainder_msg);
+  var newObservers = [];
+  notificationRequested = false;
+  for (var i = 0; i < observers.length; i++) {
+    if (observers[i](progress, bgcolor, remainder_msg)) {
+      newObservers.push(observers[i]);
+    }
   }
+  observers = newObservers;
+  if (notificationRequested) {
+    showNotice();
+  }
+
   return now;
 }
 

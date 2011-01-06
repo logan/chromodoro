@@ -1,0 +1,36 @@
+<html>
+<head>
+<link rel="stylesheet" type="text/css" href="style.css">
+<script src="interface.js"></script>
+<script>
+var RESTING_MESSAGES = [
+  "Time for a break!"
+];
+
+var IDLING_MESSAGES = [
+  "Time to get back to work!",
+  "Back to work!<br><i>OBEY THE SLUG.</i>"
+];
+
+function display() {
+  var messages = (chromodoro.state == chromodoro.RESTING)
+      ? RESTING_MESSAGES : IDLING_MESSAGES;
+  var message = messages[Math.floor(Math.random() * messages.length)];
+  var span = document.getElementById("message");
+  span.innerHTML = message;
+  installInterface(false);
+}
+
+window.addEventListener("click", function(e) { window.close(); }, true);
+</script>
+</head>
+<body onload="display()">
+<div id="interface"></div>
+<table id="notification_table">
+<tr>
+<td><img src="notice.png"></td>
+<td id="message"></td>
+</tr>
+</table>
+</body>
+</html>
