@@ -21,6 +21,9 @@ function EventLog(key) {
 }
 
 EventLog.prototype.logEvent = function(event) {
+  if (localStorage["enable_logging"] == "enabled") {
+    return;
+  }
   event.date = new Date();
   var count = this.getCount();
   var item_key = this.key + ":item:" + count;

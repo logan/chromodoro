@@ -25,5 +25,14 @@ function closeOptions() {
 <div id="options_link"><a href="javascript://" onclick="openOptions()">Options</a></div>
 <iframe id="options_iframe"></iframe>
 </body>
-<a href="eventlog.html">eventlog</a>
+<script>
+if (localStorage["enable_logging"] == "enabled") {
+  var a = document.createElement("a");
+  a.setAttribute("href", "eventlog.html");
+  a.innerHTML = "eventlog";
+  var container = document.getElementById("options_link");
+  container.appendChild(document.createElement("br"));
+  container.appendChild(a);
+}
+</script>
 </html>
