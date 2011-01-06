@@ -340,7 +340,6 @@ function startWorking(task_title) {
   localStorage["last_task_title"] = task_title;
   state = WORKING;
   var duration = localStorage["work_duration_mins"] * 60 * 1000;
-  duration /= 20;  // DONOTSUBMIT
   event_log.logEvent(new ChromodoroEvent("work", task_title, duration));
   startTimer(duration, startResting);
 };
@@ -353,7 +352,6 @@ function startResting() {
   }
   state = RESTING;
   var duration = localStorage["rest_duration_mins"] * 60 * 1000;
-  duration /= 10;  // DONOTSUBMIT
   event_log.logEvent(new ChromodoroEvent("rest", localStorage["last_task_title"], duration));
   showNotice();
   startTimer(duration, startIdling);
