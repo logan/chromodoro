@@ -158,7 +158,8 @@ var icon = document.getElementById("icon");
 // Works in two modes: icon and popup. Icon mode is for a tiny, non-interactive
 // version. Popup mode features an emulated "stop" button for interrupting the
 // timer and returning to the IDLING state.
-function ProgressBar(canvas, icon_mode) {
+function ProgressBar(canvas, icon_mode, opt_interactive) {
+  this.interactive = opt_interactive == null || opt_interactive;
   this.canvas = canvas;
   this.icon_mode = icon_mode;
   this.ctx = this.canvas.getContext("2d");
@@ -166,7 +167,7 @@ function ProgressBar(canvas, icon_mode) {
   this.stop_button_size = this.icon_mode ? 0 : this.canvas.height - 2 * this.stop_button_offset;
   this.bgcolor = "white";
   var self = this;
-  if (!icon_mode) {
+  if (!icon_mode && this.interactive) {
     this.canvas.onclick = function(e) { self.onClick(e); };
   }
 }
@@ -188,7 +189,8 @@ ProgressBar.prototype.update = function(percentage, color, label) {
   this.Clear();
   var height = this.icon_mode ? 8 : this.canvas.height;
   var width = percentage * this.canvas.width;
-  if (width < 2 * this.stop_button_offset + this.stop_button_size) {
+  if (this.interactive &&
+      width < 2 * this.stop_button_offset + this.stop_button_size) {
     width = 2 * this.stop_button_offset + this.stop_button_size;
   }
   this.DrawGlossyRectangle(color, 0, 0, width, height);
@@ -196,7 +198,7 @@ ProgressBar.prototype.update = function(percentage, color, label) {
     this.DrawIcon();
     this.ctx.strokeStyle = "black";
     this.ctx.strokeRect(0, 0, this.canvas.width, 8);
-  } else {
+  } else if (this.interactive) {
     var third = this.canvas.height / 3;
     this.DrawRectangle(interpolateBetweenColors(color, [0, 0, 0, 0xff], 0.3),
                        this.stop_button_offset, this.stop_button_offset,

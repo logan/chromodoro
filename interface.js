@@ -123,7 +123,7 @@ function installInterface(opt_interactive) {
     interface.style.display = "none";
   }
 
-  var progress_bar = new chromodoro.ProgressBar(canvas);
+  var progress_bar = new chromodoro.ProgressBar(canvas, false, interactive);
   var prev_state = chromodoro.state;
 
   // Callback for background.html to invoke on each timer tick or state change.
