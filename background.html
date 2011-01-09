@@ -181,7 +181,7 @@ ProgressBar.prototype.onClick = function(e) {
   var high = low + this.stop_button_size;
   if (e.offsetX >= low && e.offsetY >= low
       && e.offsetX <= high && e.offsetY <= high) {
-    startIdling();
+    startIdling(false);
   }
 };
 
@@ -363,7 +363,8 @@ function startResting() {
 };
 
 // Transitions to the IDLING state.
-function startIdling() {
+function startIdling(opt_notify) {
+  var notify = opt_notify == null || opt_notify;
   if (timeout != null) {
     clearTimeout(timeout);
     timeout = null;
@@ -371,7 +372,7 @@ function startIdling() {
   event_log.logEvent(new ChromodoroEvent("rest", null, null));
   remainder_ms = localStorage["work_duration_mins"] * 60 * 1000;
   progress = 0;
-  if (state != IDLING) {
+  if (notify && state != IDLING) {
     showNotice();
   }
   state = IDLING;
