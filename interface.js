@@ -78,12 +78,6 @@ function installInterface(opt_interactive) {
 
   var canvas = document.createElement("canvas");
   var width = window.innerWidth - 88;
-  /*
-  var availWidth = window.innerWidth - 88;
-  if (width > 0.95 * availWidth) {
-    width = 0.95 * availWidth;
-  }
-  */
   canvas.setAttribute("id", "canvas");
   canvas.setAttribute("width", width);
   canvas.setAttribute("height", 24);
